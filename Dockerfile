@@ -26,7 +26,7 @@ FROM scratch
 
 COPY --from=build /etc/ssl/certs /etc/ssl/certs
 COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo
-COPY --from=build /bin/grpc_health_probe /opt/bin/
-COPY --from=build /build/app /opt/bin/
+COPY --from=build /bin/grpc_health_probe /bin/
+COPY --from=build /build/app /bin/
 
-ENTRYPOINT [ "/opt/bin/app" ]
+ENTRYPOINT [ "/bin/app" ]
