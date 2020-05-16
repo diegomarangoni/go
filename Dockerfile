@@ -13,6 +13,7 @@ WORKDIR /build
 COPY . .
 
 ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64 
+
 ENV GIT_COMMIT="" GIT_BRANCH="" BUILD_DATE="" BUILD_VERSION=""
 ENV LDFLAGS="-X main.GitCommit=${GIT_COMMIT} -X main.GitBranch=${GIT_BRANCH} -X main.BuildDate=${BUILD_DATE} -X main.BuildVersion=${BUILD_VERSION}"
 
