@@ -5,7 +5,7 @@ import (
 
 	"diegomarangoni.dev/go/pkg/lib/env"
 	"diegomarangoni.dev/go/pkg/lib/grpc"
-	pb "diegomarangoni.dev/go/pkg/service/namespace/name"
+	pb "diegomarangoni.dev/go/pkg/service/foo/bar"
 )
 
 var (
@@ -23,7 +23,7 @@ func init() {
 
 func main() {
 	svc := grpc.Service{
-		Name: "example.namespace",
+		Name: "foo.bar",
 		Version: &grpc.Version{
 			GitCommit:    GitCommit,
 			GitBranch:    GitBranch,
