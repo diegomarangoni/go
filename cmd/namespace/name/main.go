@@ -23,7 +23,7 @@ func init() {
 
 func main() {
 	svc := grpc.Service{
-		Name: "example.namespace",
+		Name: "name.namespace",
 		Version: &grpc.Version{
 			GitCommit:    GitCommit,
 			GitBranch:    GitBranch,
