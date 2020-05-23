@@ -26,7 +26,7 @@ type Server struct {
 	server       *grpc.Server
 	listenPort   int64
 	registerFunc RegisterFunc
-	logAny       bool
+	logAll       bool
 	reflection   bool
 }
 
@@ -73,11 +73,11 @@ func (s *Server) run(l net.Listener) error {
 				return true
 			}
 
-			if false == s.logAny || ep == "/grpc.health.v1.Health/Check" {
+			if false == s.logAll || ep == "/grpc.health.v1.Health/Check" {
 				return false
 			}
 
-			if s.logAny {
+			if s.logAll {
 				return true
 			}
 

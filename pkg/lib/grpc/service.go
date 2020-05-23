@@ -58,7 +58,7 @@ func New(svc Service, opts Options) (*Server, error) {
 		log:        log,
 		sigint:     sigint,
 		listenPort: listenPort,
-		logAny:     opts.LogAnyRequest,
+		logAll:     opts.LogAllRequests,
 		reflection: opts.ServerReflection,
 	}, nil
 }

@@ -36,7 +36,7 @@ func main() {
 
 	opts := grpc.Options{
 		ListenPort:       env.Int64("LISTEN_PORT"),
-		LogAnyRequest:    env.Bool("LOG_ANY_REQUEST", debug),
+		LogAllRequests:   env.Bool("LOG_ALL_REQUESTS", debug),
 		ServerReflection: env.Bool("SERVER_REFLECTION", debug),
 	}
 
