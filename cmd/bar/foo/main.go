@@ -5,7 +5,7 @@ import (
 
 	"diegomarangoni.dev/go/pkg/lib/env"
 	"diegomarangoni.dev/go/pkg/lib/grpc"
-	pb "diegomarangoni.dev/go/pkg/service/foo/bar"
+	pb "diegomarangoni.dev/go/pkg/service/bar/foo"
 )
 
 var (
@@ -36,7 +36,7 @@ func main() {
 
 	opts := grpc.Options{
 		ListenPort:       env.Int64("LISTEN_PORT"),
-		LogAnyRequest:    env.Bool("LOG_ANY_REQUEST", debug),
+		LogAllRequests:   env.Bool("LOG_ALL_REQUESTS", debug),
 		ServerReflection: env.Bool("SERVER_REFLECTION", debug),
 	}
 

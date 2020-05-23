@@ -1,7 +1,7 @@
-package bar
+package foo
 
 import (
-	pb "diegomarangoni.dev/go/pkg/pb/service/foo/bar/v1"
+	pb "diegomarangoni.dev/go/pkg/pb/service/bar/foo/v1"
 	"google.golang.org/grpc"
 )
 

@@ -1,9 +1,9 @@
-package bar
+package foo
 
 import (
 	"context"
 
-	pb "diegomarangoni.dev/go/pkg/pb/service/foo/bar/v1"
+	pb "diegomarangoni.dev/go/pkg/pb/service/bar/foo/v1"
 )
 
 type Acme struct {
