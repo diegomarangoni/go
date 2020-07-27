@@ -6,6 +6,8 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"runtime"
+	"syscall"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
@@ -21,52 +23,100 @@ import (
 type Server struct {
 	context      context.Context
 	cancel       context.CancelFunc
-	log          *zap.Logger
-	sigint       chan os.Signal
-	server       *grpc.Server
-	listenPort   int64
+	signal       chan os.Signal
+	listen       net.Listener
+	logger       *zap.Logger
 	registerFunc RegisterFunc
 	logAll       bool
 	reflection   bool
+	server       *grpc.Server
+}
+
+func NewServer(svc Service, opts Options) (*Server, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	chansig := make(chan os.Signal, 1)
+	signal.Notify(chansig, os.Interrupt, syscall.SIGTERM)
+
+	var listenPort int64 = 20020
+	if opts.ListenPort > 0 {
+		listenPort = opts.ListenPort
+	}
+	listen, err := net.Listen("tcp", fmt.Sprintf(":%d", listenPort))
+	if nil != err {
+		return nil, err
+	}
+
+	fields := []zap.Field{
+		zap.String("go", runtime.Version()),
+		zap.Object("svc", svc),
+	}
+	if opts.Kubernetes != nil {
+		fields = append(fields, zap.Object("k8s", opts.Kubernetes))
+	}
+	logger := opts.Logger
+	if opts.Logger == nil {
+		var err error
+		logger, err = zap.NewProduction()
+		if nil != err {
+			return nil, err
+		}
+	}
+	logger = logger.WithOptions(zap.Fields(fields...))
+
+	return &Server{
+		context:    ctx,
+		cancel:     cancel,
+		signal:     chansig,
+		listen:     listen,
+		logger:     logger,
+		logAll:     opts.LogAllRequests,
+		reflection: opts.ServerReflection,
+	}, nil
 }
 
 type RegisterFunc func(s *grpc.Server)
 
-func (s *Server) RegisterServers(fn RegisterFunc) {
+func (s *Server) RegisterServersFunc(fn RegisterFunc) {
 	s.registerFunc = fn
 }
 
-func (s *Server) ListenAndServe() error {
-	g, gctx := errgroup.WithContext(s.context)
-
-	l, err := net.Listen("tcp", fmt.Sprintf(":%d", s.listenPort))
-	if nil != err {
-		return err
+func (s *Server) Addr() net.Addr {
+	if nil == s.listen {
+		return nil
 	}
+	return s.listen.Addr()
+}
 
-	g.Go(func() error {
-		return s.run(l)
+func (s *Server) Context() context.Context {
+	return s.context
+}
+
+func (s *Server) ListenAndServe() error {
+	eg, egctx := errgroup.WithContext(s.context)
+
+	eg.Go(func() error {
+		return s.run()
 	})
 
 	select {
-	case <-s.sigint:
-		s.log.Warn("Shutdown signal received")
+	case <-s.signal:
+		s.logger.Warn("Shutdown signal received")
 		break
-	case <-gctx.Done():
-		s.log.Warn("Service stopped")
+	case <-egctx.Done():
+		s.logger.Warn("Service stopped")
 		break
 	}
 
-	signal.Stop(s.sigint)
-
 	s.cancel()
-	s.log.Sync()
+	signal.Stop(s.signal)
 	s.server.GracefulStop()
+	s.logger.Sync()
 
-	return g.Wait()
+	return eg.Wait()
 }
 
-func (s *Server) run(l net.Listener) error {
+func (s *Server) run() error {
 	zapOpts := []grpc_zap.Option{
 		grpc_zap.WithDecider(func(ep string, err error) bool {
 			if err != nil {
@@ -87,10 +137,10 @@ func (s *Server) run(l net.Listener) error {
 
 	opts := []grpc.ServerOption{
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
-			grpc_zap.UnaryServerInterceptor(s.log, zapOpts...),
+			grpc_zap.UnaryServerInterceptor(s.logger, zapOpts...),
 		)),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
-			grpc_zap.StreamServerInterceptor(s.log, zapOpts...),
+			grpc_zap.StreamServerInterceptor(s.logger, zapOpts...),
 		)),
 	}
 
@@ -109,12 +159,12 @@ func (s *Server) run(l net.Listener) error {
 	hc.SetServingStatus("server", grpc_health_v1.HealthCheckResponse_SERVING)
 	defer hc.SetServingStatus("server", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
 
-	s.log.Info(
+	s.logger.Info(
 		"gRPC server listening",
-		zap.String("listen", l.Addr().String()),
+		zap.String("listen", s.listen.Addr().String()),
 	)
 
-	err := s.server.Serve(l)
+	err := s.server.Serve(s.listen)
 	if nil != err && grpc.ErrServerStopped != err {
 		return err
 	}
