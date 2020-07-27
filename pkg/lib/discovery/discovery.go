@@ -60,7 +60,7 @@ type Etcd struct {
 	Endpoints []string
 }
 
-func New(ctx context.Context, svc Service, opts Options) (*Discovery, error) {
+func NewService(ctx context.Context, svc Service, opts Options) (*Discovery, error) {
 	if nil == opts.Logger {
 		var err error
 		opts.Logger, err = zap.NewProduction()

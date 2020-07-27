@@ -19,7 +19,7 @@ var (
 
 func init() {
 	typenv.SetGlobalDefault(
-		typenv.E(typenv.Int64, "LISTEN_PORT", 20020),
+		typenv.E(typenv.Bool, "DEBUG", true),
 	)
 }
 
@@ -28,8 +28,6 @@ func main() {
 	if nil != err {
 		log.Panicf("failed to create a logger instance: %v", err)
 	}
-
-	debug := typenv.Bool("DEBUG", true)
 
 	svc := grpc.Service{
 		Name: "name.namespace",
@@ -40,35 +38,38 @@ func main() {
 			BuildVersion: BuildVersion,
 		},
 	}
+
 	opts := grpc.Options{
 		Logger:           logger,
-		ListenPort:       typenv.Int64("LISTEN_PORT"),
-		LogAllRequests:   typenv.Bool("LOG_ALL_REQUESTS", debug),
-		ServerReflection: typenv.Bool("SERVER_REFLECTION", debug),
+		ListenPort:       typenv.Int64("LISTEN_PORT", 20020),
+		LogAllRequests:   typenv.Bool("LOG_ALL_REQUESTS", typenv.Bool("DEBUG")),
+		ServerReflection: typenv.Bool("SERVER_REFLECTION", typenv.Bool("DEBUG")),
 	}
+
 	if "" != typenv.String("POD_NAME") && "" != typenv.String("NODE_NAME") {
 		opts.Kubernetes = &grpc.Kubernetes{
 			Pod:  typenv.String("POD_NAME"),
 			Node: typenv.String("NODE_NAME"),
 		}
 	}
-	srv, err := grpc.New(svc, opts)
+
+	srv, err := grpc.NewServer(svc, opts)
 	if nil != err {
 		logger.Panic("failed to create grpc server", zap.Error(err))
 	}
-	srv.RegisterServers(pb.RegisterServers)
 
-	svcdisc := discovery.NewService(srv)
-	err = svcdisc.Register()
-	if nil != err {
-		logger.Panic("unable to register", zap.Error(err))
+	srv.RegisterServersFunc(pb.RegisterServers)
+
+	etcd := &discovery.Etcd{
+		Endpoints: []string{typenv.String("ETCD_SERVICE", "http://cluster1.etcd.svc.cluster.local:2379")},
 	}
-	defer func() {
-		err := svcdisc.Unregister()
-		if nil != err {
-			logger.Panic("unable to deregister", zap.Error(err))
-		}
-	}()
+	discv, err := discovery.NewService(srv.Context(),
+		discovery.Service{Name: svc.Name, Address: srv.Addr()},
+		discovery.Options{Logger: logger, Etcd: etcd})
+	if nil != err {
+		logger.Panic("service discovery failed", zap.Error(err))
+	}
+	go discv.BestEffortRun()
 
 	err = srv.ListenAndServe()
 	if nil != err {

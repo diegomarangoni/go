@@ -17,10 +17,10 @@ ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
 ENV GIT_COMMIT="" GIT_BRANCH="" BUILD_DATE="" BUILD_VERSION=""
 ENV LDFLAGS="-X main.GitCommit=${GIT_COMMIT} -X main.GitBranch=${GIT_BRANCH} -X main.BuildDate=${BUILD_DATE} -X main.BuildVersion=${BUILD_VERSION}"
 
-ARG NAMESPACE=foo
-ARG NAME=bar
+ARG NAMESPACE=bar
+ARG NAME=foo
 
-RUN  go build -ldflags "${LDFLAGS}" -o app cmd/${NAMESPACE}/${NAME}/main.go
+RUN go build -ldflags "${LDFLAGS}" -o app cmd/${NAMESPACE}/${NAME}/main.go
 
 FROM scratch
 

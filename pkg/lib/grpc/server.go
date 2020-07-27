@@ -62,7 +62,7 @@ func NewServer(svc Service, opts Options) (*Server, error) {
 			return nil, err
 		}
 	}
-	logger.WithOptions(zap.Fields(fields...))
+	logger = logger.WithOptions(zap.Fields(fields...))
 
 	return &Server{
 		context:    ctx,

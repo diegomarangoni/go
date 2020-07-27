@@ -17,48 +17,35 @@ var (
 	BuildVersion string
 )
 
-var (
-	name    string
-	version *grpc.Version
-	logger  *zap.Logger
-	debug   bool
-)
-
 func init() {
-	name = "foo.bar"
-
-	version = &grpc.Version{
-		GitCommit:    GitCommit,
-		GitBranch:    GitBranch,
-		BuildDate:    BuildDate,
-		BuildVersion: BuildVersion,
-	}
-
-	var err error
-	logger, err = zap.NewProduction()
-	if nil != err {
-		log.Panicf("failed to create a logger instance: %v", err)
-	}
-
-	debug = typenv.Bool("DEBUG", true)
-
 	typenv.SetGlobalDefault(
-		typenv.E(typenv.Int64, "LISTEN_PORT", 20020),
+		typenv.E(typenv.Bool, "DEBUG", true),
 	)
 }
 
 func main() {
+	logger, err := zap.NewProduction()
+	if nil != err {
+		log.Panicf("failed to create a logger instance: %v", err)
+	}
+
 	svc := grpc.Service{
-		Name:    name,
-		Version: version,
+		Name: "foo.bar",
+		Version: &grpc.Version{
+			GitCommit:    GitCommit,
+			GitBranch:    GitBranch,
+			BuildDate:    BuildDate,
+			BuildVersion: BuildVersion,
+		},
 	}
 
 	opts := grpc.Options{
 		Logger:           logger,
-		ListenPort:       typenv.Int64("LISTEN_PORT"),
-		LogAllRequests:   typenv.Bool("LOG_ALL_REQUESTS", debug),
-		ServerReflection: typenv.Bool("SERVER_REFLECTION", debug),
+		ListenPort:       typenv.Int64("LISTEN_PORT", 20020),
+		LogAllRequests:   typenv.Bool("LOG_ALL_REQUESTS", typenv.Bool("DEBUG")),
+		ServerReflection: typenv.Bool("SERVER_REFLECTION", typenv.Bool("DEBUG")),
 	}
+
 	if "" != typenv.String("POD_NAME") && "" != typenv.String("NODE_NAME") {
 		opts.Kubernetes = &grpc.Kubernetes{
 			Pod:  typenv.String("POD_NAME"),
@@ -73,19 +60,12 @@ func main() {
 
 	srv.RegisterServersFunc(pb.RegisterServers)
 
-	discv, err := discovery.New(
-		srv.Context(),
-		discovery.Service{
-			Name:    name,
-			Address: srv.Addr(),
-		},
-		discovery.Options{
-			Logger: logger,
-			Etcd: &discovery.Etcd{
-				Endpoints: []string{typenv.String("ETCD_SERVICE", "http://cluster1.etcd.svc.cluster.local:2379")},
-			},
-		},
-	)
+	etcd := &discovery.Etcd{
+		Endpoints: []string{typenv.String("ETCD_SERVICE", "http://cluster1.etcd.svc.cluster.local:2379")},
+	}
+	discv, err := discovery.NewService(srv.Context(),
+		discovery.Service{Name: svc.Name, Address: srv.Addr()},
+		discovery.Options{Logger: logger, Etcd: etcd})
 	if nil != err {
 		logger.Panic("service discovery failed", zap.Error(err))
 	}
