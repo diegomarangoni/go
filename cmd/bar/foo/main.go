@@ -3,9 +3,11 @@ package main
 import (
 	"log"
 
-	"diegomarangoni.dev/go/pkg/lib/env"
+	"diegomarangoni.dev/go/pkg/lib/discovery"
 	"diegomarangoni.dev/go/pkg/lib/grpc"
 	pb "diegomarangoni.dev/go/pkg/service/bar/foo"
+	"diegomarangoni.dev/typenv"
+	"go.uber.org/zap"
 )
 
 var (
@@ -15,47 +17,82 @@ var (
 	BuildVersion string
 )
 
+var (
+	name    string
+	version *grpc.Version
+	logger  *zap.Logger
+	debug   bool
+)
+
 func init() {
-	env.SetGlobalDefault(
-		env.E(env.Int64, "LISTEN_PORT", 20020),
+	name = "foo.bar"
+
+	version = &grpc.Version{
+		GitCommit:    GitCommit,
+		GitBranch:    GitBranch,
+		BuildDate:    BuildDate,
+		BuildVersion: BuildVersion,
+	}
+
+	var err error
+	logger, err = zap.NewProduction()
+	if nil != err {
+		log.Panicf("failed to create a logger instance: %v", err)
+	}
+
+	debug = typenv.Bool("DEBUG", true)
+
+	typenv.SetGlobalDefault(
+		typenv.E(typenv.Int64, "LISTEN_PORT", 20020),
 	)
 }
 
 func main() {
 	svc := grpc.Service{
-		Name: "foo.bar",
-		Version: &grpc.Version{
-			GitCommit:    GitCommit,
-			GitBranch:    GitBranch,
-			BuildDate:    BuildDate,
-			BuildVersion: BuildVersion,
-		},
+		Name:    name,
+		Version: version,
 	}
-
-	debug := env.Bool("DEBUG", true)
 
 	opts := grpc.Options{
-		ListenPort:       env.Int64("LISTEN_PORT"),
-		LogAllRequests:   env.Bool("LOG_ALL_REQUESTS", debug),
-		ServerReflection: env.Bool("SERVER_REFLECTION", debug),
+		Logger:           logger,
+		ListenPort:       typenv.Int64("LISTEN_PORT"),
+		LogAllRequests:   typenv.Bool("LOG_ALL_REQUESTS", debug),
+		ServerReflection: typenv.Bool("SERVER_REFLECTION", debug),
 	}
-
-	if "" != env.String("POD_NAME") && "" != env.String("NODE_NAME") {
+	if "" != typenv.String("POD_NAME") && "" != typenv.String("NODE_NAME") {
 		opts.Kubernetes = &grpc.Kubernetes{
-			Pod:  env.String("POD_NAME"),
-			Node: env.String("NODE_NAME"),
+			Pod:  typenv.String("POD_NAME"),
+			Node: typenv.String("NODE_NAME"),
 		}
 	}
 
-	srv, err := grpc.New(svc, opts)
+	srv, err := grpc.NewServer(svc, opts)
 	if nil != err {
-		log.Fatalf("failed to create grpc server: %v", err)
+		logger.Panic("failed to create grpc server", zap.Error(err))
 	}
 
-	srv.RegisterServers(pb.RegisterServers)
+	srv.RegisterServersFunc(pb.RegisterServers)
+
+	discv, err := discovery.New(
+		srv.Context(),
+		discovery.Service{
+			Name:    name,
+			Address: srv.Addr(),
+		},
+		discovery.Options{
+			Logger: logger,
+			Etcd: &discovery.Etcd{
+				Endpoints: []string{typenv.String("ETCD_SERVICE", "http://cluster1.etcd.svc.cluster.local:2379")},
+			},
+		},
+	)
+	if nil != err {
+		logger.Panic("service discovery failed", zap.Error(err))
+	}
+	go discv.BestEffortRun()
 
 	err = srv.ListenAndServe()
 	if nil != err {
-		log.Fatalf("server failed: %v", err)
+		logger.Panic("grpc server failed", zap.Error(err))
 	}
 }

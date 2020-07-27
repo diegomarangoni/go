@@ -19,3 +19,8 @@ func (v Version) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 
 	return nil
 }
+
+// String returns BuildVersion
+func (v Version) String() string {
+	return v.BuildVersion
+}
