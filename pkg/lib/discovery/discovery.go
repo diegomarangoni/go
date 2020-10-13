@@ -31,7 +31,7 @@ type Discovery struct {
 
 var (
 	defaultTimeout time.Duration = 5 * time.Second
-	defaultTTL     int64         = 60
+	defaultTTL     int64         = 15
 )
 
 func (d *Discovery) Run() error {
