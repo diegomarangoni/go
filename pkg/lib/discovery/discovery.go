@@ -73,7 +73,9 @@ func (d *Discovery) BestEffortRun() {
 
 	eg.Go(func() error {
 		err := d.Run()
-		d.logger.Error("service discovery failed", zap.Error(err))
+		if nil != err {
+			d.logger.Error("service discovery failed", zap.Error(err))
+		}
 		return err
 	})
 
