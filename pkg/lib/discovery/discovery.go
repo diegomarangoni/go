@@ -102,7 +102,7 @@ func (d *Discovery) keepAlive(ctx context.Context) error {
 		select {
 		case resp := <-keepAlive:
 			if nil == resp {
-				return nil
+				return &clientv3.ErrKeepAliveHalted{}
 			}
 
 			if resp.Revision > d.lease.Revision {
