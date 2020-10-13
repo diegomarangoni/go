@@ -27,7 +27,15 @@ func isPrivateIP(ipAddr string) bool {
 	return false
 }
 
-func guessHostIP(addr string) (string, error) {
+func guessHostIP(netaddr net.Addr) (string, error) {
+	var addr string
+
+	if tcpaddr, ok := netaddr.(*net.TCPAddr); ok {
+		addr = tcpaddr.IP.String()
+	} else {
+		addr = netaddr.String()
+	}
+
 	// if addr specified then its returned
 	if len(addr) > 0 && (addr != "0.0.0.0" && addr != "[::]" && addr != "::") {
 		return addr, nil
@@ -35,7 +43,7 @@ func guessHostIP(addr string) (string, error) {
 
 	ifaces, err := net.Interfaces()
 	if err != nil {
-		return "", fmt.Errorf("Failed to get interfaces: %v", err)
+		return "", fmt.Errorf("failed to get interfaces: %v", err)
 	}
 
 	var addrs []net.Addr
@@ -85,5 +93,5 @@ func guessHostIP(addr string) (string, error) {
 		return net.IP(publicIP).String(), nil
 	}
 
-	return "", fmt.Errorf("No IP address found, and explicit IP not provided")
+	return "", fmt.Errorf("no IP address found, and explicit IP not provided")
 }

@@ -60,16 +60,24 @@ func main() {
 
 	srv.RegisterServersFunc(pb.RegisterServers)
 
-	etcd := &discovery.Etcd{
-		Endpoints: []string{typenv.String("ETCD_SERVICE", "http://cluster1.etcd.svc.cluster.local:2379")},
-	}
-	discv, err := discovery.NewService(srv.Context(),
-		discovery.Service{Name: svc.Name, Address: srv.Addr()},
-		discovery.Options{Logger: logger, Etcd: etcd})
-	if nil != err {
-		logger.Panic("service discovery failed", zap.Error(err))
-	}
-	go discv.BestEffortRun()
+	go func() {
+		etcd := &discovery.Etcd{
+			Endpoints: []string{typenv.String("ETCD_SERVICE", "http://localhost:2379")},
+		}
+		service := discovery.Service{
+			Name:    svc.Name,
+			Address: srv.Addr(),
+		}
+		options := &discovery.Options{
+			Logger: logger,
+			Etcd:   etcd,
+		}
+		serviceDiscovery, err := discovery.NewService(srv.Context(), service, options)
+		if nil != err {
+			logger.Panic("service discovery failed", zap.Error(err))
+		}
+		go serviceDiscovery.BestEffortRun()
+	}()
 
 	err = srv.ListenAndServe()
 	if nil != err {

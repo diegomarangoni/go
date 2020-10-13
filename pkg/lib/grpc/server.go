@@ -33,8 +33,6 @@ type Server struct {
 }
 
 func NewServer(svc Service, opts Options) (*Server, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-
 	chansig := make(chan os.Signal, 1)
 	signal.Notify(chansig, os.Interrupt, syscall.SIGTERM)
 
@@ -63,6 +61,8 @@ func NewServer(svc Service, opts Options) (*Server, error) {
 		}
 	}
 	logger = logger.WithOptions(zap.Fields(fields...))
+
+	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Server{
 		context:    ctx,
