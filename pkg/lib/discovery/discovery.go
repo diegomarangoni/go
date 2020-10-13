@@ -39,7 +39,6 @@ func (d *Discovery) Run() error {
 	err := d.newLease(ctx)
 	cancel()
 	if nil != err {
-		d.logger.Error("failed to create lease", zap.Error(err))
 		return err
 	}
 
@@ -49,7 +48,6 @@ func (d *Discovery) Run() error {
 	err = d.register(ctx)
 	cancel()
 	if nil != err {
-		d.logger.Error("failed to register service", zap.Error(err))
 		return err
 	}
 
@@ -57,7 +55,6 @@ func (d *Discovery) Run() error {
 	err = d.keepAlive(ctx)
 	cancel()
 	if nil != err {
-		d.logger.Error("failed to keep alive", zap.Error(err))
 		return err
 	}
 
@@ -65,7 +62,6 @@ func (d *Discovery) Run() error {
 	err = d.deregister(context.Background())
 	cancel()
 	if nil != err {
-		d.logger.Error("failed to deregister service", zap.Error(err))
 		return err
 	}
 
@@ -77,6 +73,7 @@ func (d *Discovery) BestEffortRun() {
 
 	eg.Go(func() error {
 		err := d.Run()
+		d.logger.Error("service discovery failed", zap.Error(err))
 		return err
 	})
 
