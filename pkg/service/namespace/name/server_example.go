@@ -12,12 +12,12 @@ import (
 type Example struct {
 }
 
-func (h Example) HelloWorld(ctx context.Context, req *pb.HelloWorldRequest) (*pb.HelloWorldResponse, error) {
-	if "world" == strings.ToLower(req.Name) {
+func (h Example) HelloWorld(ctx context.Context, r *pb.HelloWorldRequest) (*pb.HelloWorldResponse, error) {
+	if "world" == strings.ToLower(r.Name) {
 		return nil, errors.New("You can't say hello to entire world")
 	}
 
 	return &pb.HelloWorldResponse{
-		Content: fmt.Sprintf("Hello %s", req.Name),
+		Content: fmt.Sprintf("Hello %s", r.Name),
 	}, nil
 }

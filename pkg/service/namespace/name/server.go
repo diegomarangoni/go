@@ -5,6 +5,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-func RegisterServers(s *grpc.Server) {
+func RegisterServer(s *grpc.Server) {
 	pb.RegisterExampleServer(s, &Example{})
 }

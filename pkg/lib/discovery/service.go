@@ -19,7 +19,7 @@ type Lease struct {
 	Revision int64
 }
 
-type Discovery struct {
+type ServiceDiscovery struct {
 	context  context.Context
 	etcd     *clientv3.Client
 	address  string
@@ -34,7 +34,7 @@ var (
 	defaultTTL     int64         = 15
 )
 
-func (d *Discovery) Run() error {
+func (d *ServiceDiscovery) Run() error {
 	ctx, cancel := context.WithTimeout(d.context, defaultTimeout)
 	err := d.newLease(ctx)
 	cancel()
@@ -68,7 +68,7 @@ func (d *Discovery) Run() error {
 	return nil
 }
 
-func (d *Discovery) BestEffortRun() {
+func (d *ServiceDiscovery) BestEffortRun() {
 	eg, egctx := errgroup.WithContext(d.context)
 
 	eg.Go(func() error {
@@ -88,11 +88,11 @@ func (d *Discovery) BestEffortRun() {
 	}
 }
 
-func (d *Discovery) Resolver() *naming.GRPCResolver {
+func (d *ServiceDiscovery) Resolver() *naming.GRPCResolver {
 	return d.resolver
 }
 
-func (d *Discovery) keepAlive(ctx context.Context) error {
+func (d *ServiceDiscovery) keepAlive(ctx context.Context) error {
 	keepAlive, err := d.lease.KeepAlive(ctx, d.lease.ID)
 	if nil != err {
 		return err
@@ -100,6 +100,9 @@ func (d *Discovery) keepAlive(ctx context.Context) error {
 
 	for {
 		select {
+		case <-ctx.Done():
+			return nil
+
 		case resp := <-keepAlive:
 			if nil == resp {
 				return &clientv3.ErrKeepAliveHalted{}
@@ -117,7 +120,7 @@ func (d *Discovery) keepAlive(ctx context.Context) error {
 	}
 }
 
-func (d *Discovery) newLease(ctx context.Context) error {
+func (d *ServiceDiscovery) newLease(ctx context.Context) error {
 	lease := clientv3.NewLease(d.etcd)
 
 	leaseGrant, err := lease.Grant(ctx, defaultTTL)
@@ -135,7 +138,7 @@ func (d *Discovery) newLease(ctx context.Context) error {
 	return nil
 }
 
-func (d *Discovery) register(ctx context.Context) error {
+func (d *ServiceDiscovery) register(ctx context.Context) error {
 	op := grpc_naming.Update{Op: grpc_naming.Add, Addr: d.address}
 
 	err := d.resolver.Update(ctx, d.service, op, clientv3.WithLease(d.lease.ID))
@@ -147,7 +150,7 @@ func (d *Discovery) register(ctx context.Context) error {
 	return nil
 }
 
-func (d *Discovery) deregister(ctx context.Context) error {
+func (d *ServiceDiscovery) deregister(ctx context.Context) error {
 	op := grpc_naming.Update{Op: grpc_naming.Delete, Addr: d.address}
 
 	err := d.resolver.Update(ctx, d.service, op)
@@ -159,8 +162,12 @@ func (d *Discovery) deregister(ctx context.Context) error {
 	return nil
 }
 
-type Service struct {
-	Name    string
+type Service interface {
+	Name() string
+}
+
+type Instance struct {
+	Service Service
 	Address net.Addr
 }
 
@@ -173,7 +180,7 @@ type Etcd struct {
 	Endpoints []string
 }
 
-func NewService(ctx context.Context, svc Service, opts *Options) (*Discovery, error) {
+func NewService(ctx context.Context, inst Instance, opts *Options) (*ServiceDiscovery, error) {
 	if nil == ctx {
 		ctx = context.Background()
 	}
@@ -203,17 +210,17 @@ func NewService(ctx context.Context, svc Service, opts *Options) (*Discovery, er
 		return nil, err
 	}
 
-	ip, err := guessHostIP(svc.Address)
+	ip, err := guessHostIP(inst.Address)
 	if nil != err {
 		return nil, err
 	}
 
-	return &Discovery{
+	return &ServiceDiscovery{
 		context:  ctx,
 		etcd:     etcd,
 		address:  ip,
 		logger:   opts.Logger,
-		service:  svc.Name,
+		service:  inst.Service.Name(),
 		resolver: &naming.GRPCResolver{Client: etcd},
 	}, nil
 }

@@ -32,7 +32,7 @@ type Server struct {
 	server       *grpc.Server
 }
 
-func NewServer(svc Service, opts Options) (*Server, error) {
+func NewServer(inst Instance, opts ServerOptions) (*Server, error) {
 	chansig := make(chan os.Signal, 1)
 	signal.Notify(chansig, os.Interrupt, syscall.SIGTERM)
 
@@ -47,7 +47,7 @@ func NewServer(svc Service, opts Options) (*Server, error) {
 
 	fields := []zap.Field{
 		zap.String("go", runtime.Version()),
-		zap.Object("svc", svc),
+		zap.Object("instance", inst),
 	}
 	if opts.Kubernetes != nil {
 		fields = append(fields, zap.Object("k8s", opts.Kubernetes))
@@ -76,10 +76,6 @@ func NewServer(svc Service, opts Options) (*Server, error) {
 }
 
 type RegisterFunc func(s *grpc.Server)
-
-func (s *Server) RegisterServersFunc(fn RegisterFunc) {
-	s.registerFunc = fn
-}
 
 func (s *Server) Addr() net.Addr {
 	if nil == s.listen {
