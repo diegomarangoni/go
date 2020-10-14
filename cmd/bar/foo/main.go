@@ -57,43 +57,46 @@ func main() {
 		logger.Panic("failed to create grpc server", zap.Error(err))
 	}
 
-	clientOpts := grpc.ClientOptions{
-		Logger:         logger,
-		LogAllRequests: typenv.Bool("LOG_ALL_REQUESTS", typenv.Bool("DEBUG")),
+	etcd := &discovery.Etcd{
+		Endpoints: []string{typenv.String("ETCD_SERVICE", "http://localhost:2379")},
 	}
-	if "" != typenv.String("POD_NAME") && "" != typenv.String("NODE_NAME") {
-		clientOpts.Kubernetes = &grpc.Kubernetes{
-			Pod:  typenv.String("POD_NAME"),
-			Node: typenv.String("NODE_NAME"),
-		}
+	options := &discovery.Options{
+		Logger: logger,
+		Etcd:   etcd,
 	}
-	client, err := grpc.NewClient(instance, clientOpts)
-	if nil != err {
-		logger.Panic("failed to create grpc client", zap.Error(err))
-	}
-	clientDiscovery, err := discovery.NewClient(client)
-	if nil != err {
-		logger.Panic("failed to create discovery client", zap.Error(err))
-	}
-	foo_bar.RegisterClient(clientDiscovery)
 
 	go func() {
-		etcd := &discovery.Etcd{
-			Endpoints: []string{typenv.String("ETCD_SERVICE", "http://localhost:2379")},
-		}
 		service := discovery.Instance{
 			Service: instance.Service,
 			Address: server.Addr(),
-		}
-		options := &discovery.Options{
-			Logger: logger,
-			Etcd:   etcd,
 		}
 		serviceDiscovery, err := discovery.NewService(server.Context(), service, options)
 		if nil != err {
 			logger.Panic("service discovery failed", zap.Error(err))
 		}
 		go serviceDiscovery.BestEffortRun()
+	}()
+
+	go func() {
+		clientOpts := grpc.ClientOptions{
+			Logger:         logger,
+			LogAllRequests: typenv.Bool("LOG_ALL_REQUESTS", typenv.Bool("DEBUG")),
+		}
+		if "" != typenv.String("POD_NAME") && "" != typenv.String("NODE_NAME") {
+			clientOpts.Kubernetes = &grpc.Kubernetes{
+				Pod:  typenv.String("POD_NAME"),
+				Node: typenv.String("NODE_NAME"),
+			}
+		}
+		client, err := grpc.NewClient(instance, clientOpts)
+		if nil != err {
+			logger.Panic("failed to create grpc client", zap.Error(err))
+		}
+		clientDiscovery, err := discovery.NewClient(client, options)
+		if nil != err {
+			logger.Panic("failed to create discovery client", zap.Error(err))
+		}
+		foo_bar.RegisterClient(clientDiscovery)
 	}()
 
 	err = server.ListenAndServe()

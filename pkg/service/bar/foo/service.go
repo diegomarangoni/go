@@ -3,6 +3,6 @@ package foo
 type Service struct {
 }
 
-func (Service) Name() string {
+func (Service) String() string {
 	return "foo.bar"
 }

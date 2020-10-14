@@ -15,7 +15,7 @@ type Instance struct {
 
 // MarshalLogObject tells zap how to handle struct encoding
 func (s Instance) MarshalLogObject(enc zapcore.ObjectEncoder) error {
-	enc.AddString("service", s.Service.Name())
+	enc.AddString("service", s.Service.String())
 	enc.AddObject("version", s.Version)
 
 	return nil

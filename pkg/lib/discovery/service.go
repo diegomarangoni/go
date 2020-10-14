@@ -163,7 +163,7 @@ func (d *ServiceDiscovery) deregister(ctx context.Context) error {
 }
 
 type Service interface {
-	Name() string
+	String() string
 }
 
 type Instance struct {
@@ -180,7 +180,7 @@ type Etcd struct {
 	Endpoints []string
 }
 
-func NewService(ctx context.Context, inst Instance, opts *Options) (*ServiceDiscovery, error) {
+func NewService(ctx context.Context, instance Instance, opts *Options) (*ServiceDiscovery, error) {
 	if nil == ctx {
 		ctx = context.Background()
 	}
@@ -210,7 +210,7 @@ func NewService(ctx context.Context, inst Instance, opts *Options) (*ServiceDisc
 		return nil, err
 	}
 
-	ip, err := guessHostIP(inst.Address)
+	ip, err := guessHostIP(instance.Address)
 	if nil != err {
 		return nil, err
 	}
@@ -220,7 +220,7 @@ func NewService(ctx context.Context, inst Instance, opts *Options) (*ServiceDisc
 		etcd:     etcd,
 		address:  ip,
 		logger:   opts.Logger,
-		service:  inst.Service.Name(),
+		service:  instance.Service.String(),
 		resolver: &naming.GRPCResolver{Client: etcd},
 	}, nil
 }

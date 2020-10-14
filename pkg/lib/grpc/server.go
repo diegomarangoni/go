@@ -32,7 +32,7 @@ type Server struct {
 	server       *grpc.Server
 }
 
-func NewServer(inst Instance, opts ServerOptions) (*Server, error) {
+func NewServer(instance Instance, opts ServerOptions) (*Server, error) {
 	chansig := make(chan os.Signal, 1)
 	signal.Notify(chansig, os.Interrupt, syscall.SIGTERM)
 
@@ -47,7 +47,7 @@ func NewServer(inst Instance, opts ServerOptions) (*Server, error) {
 
 	fields := []zap.Field{
 		zap.String("go", runtime.Version()),
-		zap.Object("instance", inst),
+		zap.Object("instance", instance),
 	}
 	if opts.Kubernetes != nil {
 		fields = append(fields, zap.Object("k8s", opts.Kubernetes))
