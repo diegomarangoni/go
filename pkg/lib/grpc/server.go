@@ -65,13 +65,14 @@ func NewServer(instance Instance, opts ServerOptions) (*Server, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Server{
-		context:    ctx,
-		cancel:     cancel,
-		signal:     chansig,
-		listen:     listen,
-		logger:     logger,
-		logAll:     opts.LogAllRequests,
-		reflection: opts.ServerReflection,
+		context:      ctx,
+		cancel:       cancel,
+		signal:       chansig,
+		listen:       listen,
+		logger:       logger,
+		registerFunc: opts.RegisterServerFunc,
+		logAll:       opts.LogAllRequests,
+		reflection:   opts.ServerReflection,
 	}, nil
 }
 

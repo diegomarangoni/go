@@ -10,6 +10,7 @@ import (
 )
 
 type Example struct {
+	pb.UnimplementedExampleServer
 }
 
 func (h Example) HelloWorld(ctx context.Context, r *pb.HelloWorldRequest) (*pb.HelloWorldResponse, error) {

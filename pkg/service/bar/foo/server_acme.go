@@ -10,6 +10,7 @@ import (
 )
 
 type Acme struct {
+	pb.UnimplementedAcmeServer
 }
 
 func (h Acme) Ping(ctx context.Context, r *pb.PingRequest) (*pb.PongResponse, error) {

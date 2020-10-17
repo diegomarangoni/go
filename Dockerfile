@@ -1,7 +1,7 @@
 FROM golang:1.14.2-alpine as build
 
 RUN apk update \
-    && apk add ca-certificates tzdata \
+    && apk add git ca-certificates tzdata \
     && update-ca-certificates
 
 RUN GRPC_HEALTH_PROBE_VERSION=v0.3.1 && \
