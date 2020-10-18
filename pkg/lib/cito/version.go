@@ -1,4 +1,4 @@
-package grpc
+package cito
 
 import "go.uber.org/zap/zapcore"
 

@@ -10,6 +10,10 @@ RUN GRPC_HEALTH_PROBE_VERSION=v0.3.1 && \
 
 WORKDIR /build
 
+COPY go.mod go.sum ./
+
+RUN go mod download
+
 COPY . .
 
 ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64 
