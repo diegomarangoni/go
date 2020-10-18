@@ -1,10 +1,10 @@
-FROM golang:1.14.2-alpine as build
+FROM golang:1.15-alpine as build
 
 RUN apk update \
     && apk add git ca-certificates tzdata \
     && update-ca-certificates
 
-RUN GRPC_HEALTH_PROBE_VERSION=v0.3.1 && \
+RUN GRPC_HEALTH_PROBE_VERSION=v0.3.3 && \
     wget -qO/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64 && \
     chmod +x /bin/grpc_health_probe
 
