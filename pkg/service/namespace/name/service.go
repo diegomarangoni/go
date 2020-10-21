@@ -7,6 +7,10 @@ import (
 	"google.golang.org/grpc"
 )
 
+func NewCitoService() cito.Service {
+	return &Service{}
+}
+
 type Service struct {
 	client *cito.Client
 	logger *zap.Logger
